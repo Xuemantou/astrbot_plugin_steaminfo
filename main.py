@@ -70,15 +70,22 @@ class SteamInfoPlugin(Star):
             # 获取所有Steam ID
             steam_ids = await self.data_store.get_all_steam_ids()
             if not steam_ids:
+                logger.debug("没有绑定的Steam ID，跳过更新")
                 return
+            
+            logger.info(f"开始更新Steam状态，共 {len(steam_ids)} 个Steam ID")
             
             # 获取Steam用户信息
             steam_info = await get_steam_users_info(
                 steam_ids, self.config.steam_api_key, self.config.proxy
             )
             
-            if not steam_info.get("response", {}).get("players"):
+            players = steam_info.get("response", {}).get("players", [])
+            if not players:
+                logger.warning("Steam API 返回空的玩家列表")
                 return
+            
+            logger.info(f"从 Steam API 获取到 {len(players)} 个玩家信息")
             
             # 获取旧数据用于比较
             old_players_dict = {}
@@ -88,26 +95,30 @@ class SteamInfoPlugin(Star):
                 old_players_dict[parent_id] = await self.data_store.get_players_by_steam_ids(parent_steam_ids)
             
             # 更新数据
-            await self.data_store.update_steam_info_by_players(steam_info["response"]["players"])
+            await self.data_store.update_steam_info_by_players(players)
             
             # 获取 unified_msg_origin 映射
             umo_dict = await self.data_store.get_unified_msg_origins()
+            logger.debug(f"unified_msg_origin 映射: {umo_dict}")
             
             # 播报
             for parent_id in bind_data.keys():
                 if await self.data_store.is_parent_disabled(parent_id):
+                    logger.debug(f"群组 {parent_id} 已禁用播报，跳过")
                     continue
                 
-                # 获取 unified_msg_origin，如果不存在则跳过
+                # 获取 unified_msg_origin
                 unified_msg_origin = umo_dict.get(parent_id)
                 if not unified_msg_origin:
-                    logger.warning(f"跳过播报 {parent_id}: 缺少 unified_msg_origin")
+                    logger.warning(f"跳过播报 {parent_id}: 缺少 unified_msg_origin，请让用户重新绑定 Steam ID")
                     continue
                 
                 old_players = old_players_dict.get(parent_id, [])
                 new_players = await self.data_store.get_players_by_steam_ids(
                     await self.data_store.get_all_binds(parent_id)
                 )
+                
+                logger.debug(f"群组 {parent_id}: 旧数据 {len(old_players)} 条，新数据 {len(new_players)} 条")
                 
                 await self._broadcast_steam_info(unified_msg_origin, parent_id, old_players, new_players)
                 
@@ -125,6 +136,12 @@ class SteamInfoPlugin(Star):
         """
         try:
             play_data = await self.data_store.compare_players(old_players, new_players)
+            
+            if not play_data:
+                logger.debug(f"群组 {parent_id}: 没有状态变化")
+                return
+            
+            logger.info(f"群组 {parent_id}: 检测到 {len(play_data)} 个状态变化")
             
             msg = []
             for entry in play_data:
@@ -152,7 +169,10 @@ class SteamInfoPlugin(Star):
                         )
             
             if not msg:
+                logger.debug(f"群组 {parent_id}: 没有需要播报的消息")
                 return
+            
+            logger.info(f"群组 {parent_id}: 准备播报 {len(msg)} 条消息")
             
             # 根据播报类型生成消息
             if self.config.steam_broadcast_type == "all":
@@ -170,6 +190,7 @@ class SteamInfoPlugin(Star):
                 
                 chain = [Plain("\n".join(msg)), Image.fromBytes(image_to_bytes(image))]
                 await self.context.send_message(unified_msg_origin, MessageChain(chain=chain))
+                logger.info(f"群组 {parent_id}: 播报完成（全部模式）")
                 
             elif self.config.steam_broadcast_type == "part":
                 images = []
@@ -196,10 +217,12 @@ class SteamInfoPlugin(Star):
                     chain = [Plain("\n".join(msg))]
                 
                 await self.context.send_message(unified_msg_origin, MessageChain(chain=chain))
+                logger.info(f"群组 {parent_id}: 播报完成（部分模式）")
                 
             elif self.config.steam_broadcast_type == "none":
                 chain = [Plain("\n".join(msg))]
                 await self.context.send_message(unified_msg_origin, MessageChain(chain=chain))
+                logger.info(f"群组 {parent_id}: 播报完成（仅文字模式）")
                 
         except Exception as e:
             logger.error(f"播报Steam状态失败: {e}")
@@ -416,3 +439,41 @@ steamnickname [昵称]: 设置玩家昵称
         await self.data_store.update_bind(parent_id, user_id, bind_info)
         
         yield event.plain_result(f"已设置你的昵称为 {nickname}，将在 Steam 播报中显示")
+    
+    @filter.command("steamdebug")
+    async def steam_debug(self, event: AstrMessageEvent):
+        """调试命令：显示当前绑定数据和状态"""
+        parent_id = event.get_group_id() or event.unified_msg_origin
+        
+        try:
+            # 获取绑定数据
+            bind_data = await self.data_store.get_bind_data()
+            parent_binds = bind_data.get(parent_id, [])
+            
+            # 获取 unified_msg_origin
+            umo_dict = await self.data_store.get_unified_msg_origins()
+            
+            # 获取禁用状态
+            is_disabled = await self.data_store.is_parent_disabled(parent_id)
+            
+            # 获取 Steam 信息数据
+            steam_info_data = await self.data_store.get_steam_info_data()
+            
+            debug_info = f"""调试信息：
+群组 ID: {parent_id}
+unified_msg_origin: {umo_dict.get(parent_id, '未设置')}
+播报禁用: {is_disabled}
+绑定用户数: {len(parent_binds)}
+Steam 信息数据数: {len(steam_info_data)}
+
+绑定用户列表:"""
+            
+            for bind in parent_binds:
+                debug_info += f"""
+- 用户 {bind.get('user_id')}: Steam ID {bind.get('steam_id')}, 昵称 {bind.get('nickname')}, UMO {bind.get('unified_msg_origin', '未设置')}"""
+            
+            yield event.plain_result(debug_info)
+            
+        except Exception as e:
+            logger.error(f"获取调试信息失败: {e}")
+            yield event.plain_result(f"获取调试信息失败: {e}")
