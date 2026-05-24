@@ -1,0 +1,46 @@
+{
+  "steam_api_key": {
+    "description": "Steam API密钥（支持多个，用逗号分隔）",
+    "type": "string",
+    "hint": "从 https://steamcommunity.com/dev/apikey 获取",
+    "obvious_hint": true
+  },
+  "proxy": {
+    "description": "代理服务器地址",
+    "type": "string",
+    "hint": "格式: http://127.0.0.1:7890"
+  },
+  "steam_request_interval": {
+    "description": "Steam API请求间隔（秒）",
+    "type": "int",
+    "default": 300,
+    "hint": "默认300秒（5分钟）"
+  },
+  "steam_broadcast_type": {
+    "description": "播报类型",
+    "type": "string",
+    "options": ["all", "part", "none"],
+    "default": "part",
+    "hint": "all: 全部信息, part: 部分信息, none: 仅文字"
+  },
+  "steam_disable_broadcast_on_startup": {
+    "description": "启动时禁用播报",
+    "type": "bool",
+    "default": false
+  },
+  "steam_font_regular_path": {
+    "description": "常规字体路径",
+    "type": "string",
+    "default": "fonts/MiSans-Regular.ttf"
+  },
+  "steam_font_light_path": {
+    "description": "细体字体路径",
+    "type": "string",
+    "default": "fonts/MiSans-Light.ttf"
+  },
+  "steam_font_bold_path": {
+    "description": "粗体字体路径",
+    "type": "string",
+    "default": "fonts/MiSans-Bold.ttf"
+  }
+}
