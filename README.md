@@ -6,7 +6,9 @@
 
 这是一个基于 AstrBot 的 Steam 好友状态播报插件，拥有绑定 Steam ID，查询群友状态，展示个人 Steam 主页等功能，支持跨平台，画图部分 100% 使用 Pillow 实现，较无头浏览器渲染更加轻量高效。
 
-本插件从 [nonebot-plugin-steam-info](https://github.com/zhaomaoniu/nonebot-plugin-steam-info) 移植而来。
+**本插件从 [nonebot-plugin-steam-info](https://github.com/zhaomaoniu/nonebot-plugin-steam-info) 移植而来。**
+
+本项目代码完全由MiMov2.5pro生成，代码质量不高，本意是作为自用，还请谅解
 
 ## 功能
 
@@ -30,34 +32,6 @@
 
 图 3. 个人 Steam 主页
 ![个人主页](https://raw.githubusercontent.com/zhaomaoniu/nonebot-plugin-steam-info/main/preview_2.png)
-
-## 安装方法
-
-### 方式一：通过 AstrBot WebUI 安装
-
-1. 打开 AstrBot WebUI
-2. 进入 插件管理 页面
-3. 点击 安装插件
-4. 输入插件仓库地址：`https://github.com/Xuemantou/astrbot_plugin_steaminfo`
-5. 点击安装
-
-### 方式二：手动安装
-
-1. 克隆本仓库到 AstrBot 的插件目录：
-
-```bash
-cd AstrBot/data/plugins
-git clone https://github.com/Xuemantou/astrbot_plugin_steaminfo.git
-```
-
-2. 安装依赖：
-
-```bash
-cd astrbot_plugin_steaminfo
-pip install -r requirements.txt
-```
-
-3. 重启 AstrBot
 
 ## 配置
 
